@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="在本地探索 Google 搜索趋势、比较关键词并发现热门话题。" />
+    <title>TrendScope · 搜索趋势工作台</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23087f74'/%3E%3Ctext x='11' y='29' fill='white' font-size='28'%3ET%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到主要内容</a>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="TrendScope 首页"
+        ><span class="brand-mark">t<span></span></span
+        ><span>TrendScope<small>搜索趋势工作台</small></span></a
+      >
+      <div class="nav-label">工作空间</div>
+      <nav aria-label="主要导航">
+        <button class="nav-item active" data-view="explore" aria-current="page">
+          <span class="nav-symbol">⌁</span>趋势探索<span class="nav-arrow">↗</span>
+        </button>
+        <button class="nav-item" data-view="trending">
+          <span class="nav-symbol">↗</span>实时热搜
+        </button>
+        <button class="nav-item" data-view="saved">
+          <span class="nav-symbol">▤</span>我的收藏<span id="saved-count" class="count">0</span>
+        </button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="note-line"></span>
+        <h3>让好奇心有据可循。</h3>
+        <p>从一个关键词开始，<br />看见关注度如何变化。</p>
+        <a href="https://trends.google.com/trends/" target="_blank" rel="noopener noreferrer"
+          >访问 Google Trends <span>↗</span></a
+        >
+      </div>
+      <div class="local-profile">
+        <span class="avatar">研</span><span>我的研究工作区<small>本地运行 · 无需账户</small></span>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">工作空间 <span>/</span> <strong id="crumb">趋势探索</strong></div>
+        <div class="top-actions">
+          <span class="local-status"><i></i>本地工作区</span
+          ><a href="/docs" target="_blank" rel="noopener">API 文档 ↗</a>
+        </div>
+      </header>
+      <main id="main">
+        <div class="page-heading">
+          <div>
+            <div class="eyebrow">GOOGLE TRENDS WORKSPACE</div>
+            <h1 id="page-title">探索搜索趋势<span class="title-dot">.</span></h1>
+            <p id="page-description">比较关键词的关注度，发现正在发生的变化。</p>
+          </div>
+          <div class="mode-switch" role="group" aria-label="数据模式">
+            <button data-mode="demo" class="selected" aria-pressed="true">演示数据</button
+            ><button data-mode="live" aria-pressed="false"><i></i>真实数据</button>
+          </div>
+        </div>
+        <div id="mode-banner" class="mode-banner">
+          <span class="banner-icon">i</span>
+          <p>
+            <strong>你正在浏览演示数据</strong
+            ><span>图表与话题均为合成示例，切换「真实数据」即可查询 Google。</span>
+          </p>
+          <button id="go-live">查询真实数据 ↗</button>
+        </div>
+        <div id="notice" class="notice" role="alert" hidden></div>
+
+        <section id="view-explore" class="view">
+          <form id="explore-form" class="query-panel">
+            <div class="query-top">
+              <label for="keyword-input">你想了解什么？</label
+              ><span id="keyword-count">3 / 5 个关键词</span>
+            </div>
+            <div class="keyword-box">
+              <div id="keyword-chips" class="chips"></div>
+              <input
+                id="keyword-input"
+                maxlength="500"
+                placeholder="添加关键词，按 Enter 确认"
+                aria-describedby="keyword-hint"
+              /><button class="add-keyword" type="button" id="add-keyword" aria-label="添加关键词">
+                +
+              </button>
+            </div>
+            <div class="filter-row">
+              <div class="filters">
+                <label>地区<select id="geo" aria-label="探索地区"></select></label
+                ><label>时间范围<select id="timeframe" aria-label="时间范围"></select></label
+                ><label>搜索类型<select id="gprop" aria-label="搜索类型"></select></label>
+              </div>
+              <button id="query-button" class="primary" type="submit">
+                <span>探索趋势</span><span>↗</span>
+              </button>
+            </div>
+            <div class="query-bottom">
+              <span id="keyword-hint">支持中英文；用逗号分隔多个关键词。</span
+              ><span
+                >快速体验
+                <button type="button" class="preset" data-preset="ChatGPT,Gemini,Claude">
+                  AI 助手</button
+                ><button type="button" class="preset" data-preset="matcha,coffee">饮品趋势</button
+                ><button type="button" class="preset" data-preset="running shoes">
+                  运动装备
+                </button></span
+              >
+            </div>
+          </form>
+          <div id="loading" class="loading" role="status" hidden>
+            <span class="spinner"></span>
+            <div>
+              <strong>正在获取趋势数据…</strong>
+              <p>真实趋势需要启动 Chrome，通常耗时 10–90 秒。请保留此页面。</p>
+            </div>
+          </div>
+          <div id="explore-empty" class="empty-state" hidden>
+            <div class="empty-glyph">⌁</div>
+            <h2>从一个问题，开始探索</h2>
+            <p>输入关键词并点击「探索趋势」。真实数据由 Google Trends 提供。</p>
+            <a id="empty-google" class="text-link" target="_blank" rel="noopener noreferrer"
+              >也可以在 Google Trends 中打开 ↗</a
+            >
+          </div>
+          <div id="explore-results" hidden>
+            <div class="result-toolbar">
+              <div>
+                <span id="result-mode" class="source-tag">演示</span
+                ><span id="result-context"></span>
+              </div>
+              <div class="result-actions">
+                <button id="save-query" class="text-button">＋ 收藏查询</button
+                ><button id="export-csv" class="text-button">↓ 导出 CSV</button
+                ><a id="open-google" target="_blank" rel="noopener noreferrer">Google Trends ↗</a>
+              </div>
+            </div>
+            <div class="chart-panel">
+              <div class="section-title">
+                <div>
+                  <h2>关注度随时间变化</h2>
+                  <p>搜索兴趣指数 · 0–100</p>
+                </div>
+                <span id="fetched-time" class="muted"></span>
+              </div>
+              <div id="chart-legend" class="chart-legend"></div>
+              <div id="chart-wrap" class="chart-wrap">
+                <svg
+                  id="trend-chart"
+                  viewBox="0 0 1000 280"
+                  role="img"
+                  aria-label="关键词搜索兴趣折线图"
+                  tabindex="0"
+                ></svg>
+                <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+              </div>
+              <div class="chart-foot">
+                <span>100 代表本次查询的关注度峰值，并非实际搜索次数。</span
+                ><button id="toggle-table" class="text-button" aria-expanded="false">
+                  查看数据表 ↓
+                </button>
+              </div>
+              <div id="data-table-wrap" class="table-wrap" hidden></div>
+            </div>
+            <div id="summary-cards" class="summary-grid"></div>
+            <div class="detail-grid">
+              <section class="detail-panel">
+                <div class="section-title">
+                  <div>
+                    <h2>地区关注度</h2>
+                    <p id="region-subtitle">按关键词查看地区分布</p>
+                  </div>
+                  <select id="region-keyword" aria-label="地区关注度关键词"></select>
+                </div>
+                <div id="region-list"></div>
+              </section>
+              <section class="detail-panel">
+                <div class="section-title">
+                  <div>
+                    <h2>相关搜索</h2>
+                    <p>人们还在搜索什么</p>
+                  </div>
+                  <div class="small-tabs" role="group" aria-label="相关搜索类型">
+                    <button class="active" data-related="rising">上升</button
+                    ><button data-related="top">热门</button>
+                  </div>
+                </div>
+                <div id="related-list"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-trending" class="view" hidden>
+          <div class="trending-filters">
+            <div>
+              <label for="trending-geo">国家 / 地区</label
+              ><select id="trending-geo"></select>
+            </div>
+            <button class="secondary" id="refresh-trending">刷新热搜 ↻</button>
+          </div>
+          <div class="trending-meta">
+            <span id="trending-source"></span><span>热搜搜索量是区间下限，与趋势指数不同</span>
+          </div>
+          <div id="trending-list" class="trending-list"></div>
+        </section>
+        <section id="view-saved" class="view" hidden>
+          <div class="saved-intro">
+            <p>保存关键词和筛选条件，随时继续研究。</p>
+            <span>仅保存在当前浏览器</span>
+          </div>
+          <div id="saved-list"></div>
+        </section>
+        <footer>
+          <span
+            ><strong>TrendScope</strong>
+            <span class="footer-separator">/</span> 把关注，变成洞察。</span
+          ><span>基于开源 trendspyg · 非 Google 官方产品</span>
+        </footer>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

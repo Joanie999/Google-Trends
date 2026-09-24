@@ -1,0 +1,1 @@
+"""Local Google Trends workspace."""

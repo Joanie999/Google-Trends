@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>API 文档 · TrendScope</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main style="max-width: 900px">
+      <a class="text-link" href="/">← 返回工作台</a>
+      <h1 style="margin-top: 30px">本地 API 文档</h1>
+      <p>
+        仅供本机单用户使用。完整机器可读结构见
+        <a class="text-link" href="/openapi.json">OpenAPI JSON ↗</a>。
+      </p>
+      <section class="detail-panel">
+        <h2>POST /api/explore</h2>
+        <p>
+          Content-Type: application/json；关键词 1–5 个，每个 1–100 字符。mode 必须明确选择 live 或
+          demo。
+        </p>
+        <pre style="white-space: pre-wrap">
+{
+  "keywords": ["coffee", "tea"],
+  "geo": "US",
+  "timeframe": "today 12-m",
+  "gprop": "",
+  "mode": "live"
+}</pre>
+        <p>
+          响应：request（查询条件）、source、fetched_at、cached、series（date、values、is_partial）、regions、related、related_available。
+        </p>
+        <p>
+          timeframe 支持 now 7-d、today 1-m、today 3-m、today 12-m、today 5-y。gprop
+          支持空字符串（网页）、youtube、news、images、froogle。geo 允许值见 /api/health 的
+          countries。
+        </p>
+        <p>
+          真实查询最长等待约 150 秒；成功结果缓存 15 分钟。多关键词共享量纲，相关词仅单关键词可用。
+        </p>
+      </section>
+      <section class="detail-panel" style="margin-top: 20px">
+        <h2>GET /api/trending?geo=US&amp;mode=live</h2>
+        <p>获取国家或地区热搜，禁止全球空地区。缓存 5 分钟，最长等待约 35 秒。</p>
+        <p>
+          响应：mode、geo、source、fetched_at、cached、trends（keyword、rank、volume_text、volume_min、started_at、news）。搜索量表示区间下限。
+        </p>
+      </section>
+      <section class="detail-panel" style="margin-top: 20px">
+        <h2>GET /api/health</h2>
+        <p>返回服务版本、数据提供库和支持地区。服务正常不代表 Google 当前可访问。</p>
+        <h2>错误结构</h2>
+        <pre style="white-space: pre-wrap">
+{"error":{"code":"rate_limited","message":"中文错误说明"}}</pre>
+        <p>
+          422 输入无效；404 数据不足；429 并发、冷却或上游限流；502 上游失败或结构变化；503 Chrome
+          不可用；504 查询超时。错误绝不会自动转换为演示数据。
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
