@@ -20,6 +20,7 @@ COUNTRIES = {
 }
 Timeframe = Literal["now 7-d", "today 1-m", "today 3-m", "today 12-m", "today 5-y"]
 Mode = Literal["demo", "live"]
+ScheduleInterval = Literal[3, 7]
 
 
 class ExploreRequest(BaseModel):
@@ -41,6 +42,34 @@ class ExploreRequest(BaseModel):
             if word.casefold() not in {w.casefold() for w in clean}:
                 clean.append(word)
         return clean
+
+    @field_validator("geo")
+    @classmethod
+    def valid_geo(cls, value):
+        if value not in COUNTRIES:
+            raise ValueError("请选择支持的地区")
+        return value
+
+
+class OpportunityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request: ExploreRequest
+    series: list[dict] = Field(default_factory=list, max_length=1000)
+    regions: list[dict] = Field(default_factory=list, max_length=1000)
+
+
+class ScheduleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    keywords: list[str] = Field(min_length=1, max_length=5)
+    geo: str = "US"
+    timeframe: Timeframe = "today 12-m"
+    gprop: Literal["", "youtube", "news", "images", "froogle"] = ""
+    interval_days: ScheduleInterval = 7
+
+    @field_validator("keywords")
+    @classmethod
+    def clean_keywords(cls, values):
+        return ExploreRequest.clean_keywords(values)
 
     @field_validator("geo")
     @classmethod

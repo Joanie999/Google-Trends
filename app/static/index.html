@@ -27,6 +27,9 @@
         <button class="nav-item" data-view="trending">
           <span class="nav-symbol">↗</span>实时热搜
         </button>
+        <button class="nav-item" data-view="opportunity">
+          <span class="nav-symbol">◇</span>机会分析
+        </button>
         <button class="nav-item" data-view="saved">
           <span class="nav-symbol">▤</span>我的收藏<span id="saved-count" class="count">0</span>
         </button>
@@ -208,6 +211,31 @@
             <span id="trending-source"></span><span>热搜搜索量是区间下限，与趋势指数不同</span>
           </div>
           <div id="trending-list" class="trending-list"></div>
+        </section>
+        <section id="view-opportunity" class="view" hidden>
+          <div class="saved-intro">
+            <div class="eyebrow">DEMAND VALIDATION · AMAZON</div>
+            <h2>验证真实需求，找到低竞争机会</h2>
+            <p>导入 Amazon 关键词 CSV 后，系统会把当前趋势结果与关键词匹配，并结合长期趋势、地区分布和 Amazon 信号排序。</p>
+          </div>
+          <div class="query-panel opportunity-panel">
+            <div class="filter-row">
+              <label class="file-picker">选择 Amazon CSV<input id="amazon-file" type="file" accept=".csv,text/csv" /></label>
+              <button id="amazon-import" class="primary" type="button">导入关键词</button>
+              <span id="amazon-import-status" class="muted">支持 keyword / 关键词 / search term 列</span>
+            </div>
+            <div class="schedule-row">
+              <span>更新计划</span>
+              <select id="schedule-interval" aria-label="更新周期"><option value="3">每 3 天</option><option value="7" selected>每周</option></select>
+              <button id="schedule-create" class="secondary" type="button">为当前查询创建计划</button>
+              <span id="schedule-status" class="muted"></span>
+            </div>
+          </div>
+          <div id="demand-cards" class="summary-grid"></div>
+          <div class="detail-grid opportunity-grid">
+            <section class="detail-panel"><div class="section-title"><div><h2>Amazon 机会词</h2><p>Google 上升且 Amazon 信号较低的匹配结果</p></div></div><div id="opportunity-list"><div class="inline-empty">先完成一次趋势探索并导入 CSV。</div></div></section>
+            <section class="detail-panel"><div class="section-title"><div><h2>AI 辅助判断</h2><p>未配置 API 时使用本地规则分析</p></div><button id="ai-analyze" class="secondary" type="button">生成分析</button></div><div id="ai-result" class="inline-empty">分析将显示趋势证据、风险与置信度。</div></section>
+          </div>
         </section>
         <section id="view-saved" class="view" hidden>
           <div class="saved-intro">

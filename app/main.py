@@ -7,8 +7,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .models import COUNTRIES, ExploreRequest, Mode
+from .ai import ai_analysis
+from .amazon import parse_csv
+from .analytics import analyze_regions, analyze_series, opportunity_rows
+from .models import COUNTRIES, ExploreRequest, Mode, OpportunityRequest, ScheduleRequest
 from .providers import ProviderError, TrendsService
+from .scheduler import LocalScheduler
+from .scheduler import enabled as scheduler_enabled
+from .storage import Storage
 
 STATIC = Path(__file__).parent / "static"
 app = FastAPI(
@@ -19,6 +25,10 @@ app.add_middleware(
     allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"],
 )
 service = TrendsService()
+storage = Storage()
+scheduler = LocalScheduler(storage, service)
+if scheduler_enabled():
+    scheduler.start()
 
 
 @app.middleware("http")
@@ -75,7 +85,94 @@ def health():
 
 @app.post("/api/explore")
 def explore(body: ExploreRequest):
-    return service.explore(body)
+    result = service.explore(body)
+    if body.mode == "live":
+        storage.save_snapshot(body.model_dump(), result)
+    return result
+
+
+@app.post("/api/analyze")
+def analyze(body: OpportunityRequest):
+    return {
+        "trends": [
+            analyze_series(body.series, keyword) for keyword in body.request.keywords
+        ],
+        "regions": [
+            analyze_regions(body.regions, keyword) for keyword in body.request.keywords
+        ],
+    }
+
+
+@app.post("/api/amazon/import")
+async def import_amazon(request: Request):
+    content = await request.body()
+    if len(content) > 5 * 1024 * 1024:
+        raise ProviderError("payload_too_large", "CSV 文件不能超过 5 MB。", 413)
+    try:
+        rows, warnings = parse_csv(content)
+    except ValueError as exc:
+        raise ProviderError("csv_invalid", str(exc), 422) from exc
+    count = storage.replace_amazon(rows)
+    return {
+        "imported": count,
+        "warnings": warnings,
+        "columns": ["keyword", "search_volume", "rank", "competition", "asin"],
+    }
+
+
+@app.get("/api/amazon")
+def amazon_rows():
+    return {"rows": storage.amazon(), "count": len(storage.amazon())}
+
+
+@app.post("/api/amazon/opportunities")
+def amazon_opportunities(body: OpportunityRequest):
+    result = {
+        "request": body.request.model_dump(),
+        "series": body.series,
+        "regions": body.regions,
+    }
+    rows = opportunity_rows(result, storage.amazon())
+    return {"rows": rows, "count": len(rows), "imported_count": len(storage.amazon())}
+
+
+@app.get("/api/history")
+def history():
+    return {"items": storage.history()}
+
+
+@app.post("/api/schedules")
+def create_schedule(body: ScheduleRequest):
+    return storage.add_schedule(
+        body.model_dump(exclude={"interval_days"}), body.interval_days
+    )
+
+
+@app.get("/api/schedules")
+def list_schedules():
+    return {"items": storage.schedules()}
+
+
+@app.post("/api/schedules/run-due")
+def run_due_schedules():
+    return {"items": scheduler.run_due()}
+
+
+@app.delete("/api/schedules/{schedule_id}")
+def delete_schedule(schedule_id: int):
+    if not storage.delete_schedule(schedule_id):
+        raise ProviderError("not_found", "更新计划不存在。", 404)
+    return {"deleted": True}
+
+
+@app.post("/api/analyze-ai")
+def analyze_with_ai(body: OpportunityRequest):
+    result = {
+        "request": body.request.model_dump(),
+        "series": body.series,
+        "regions": body.regions,
+    }
+    return ai_analysis(result, opportunity_rows(result, storage.amazon()))
 
 
 @app.get("/api/trending")

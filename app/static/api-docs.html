@@ -48,6 +48,16 @@
         </p>
       </section>
       <section class="detail-panel" style="margin-top: 20px">
+        <h2>POST /api/amazon/import</h2>
+        <p>请求体直接发送 UTF-8 CSV（支持 BOM）。必须有 keyword、关键词或 search term 列，可选 search_volume、rank、competition、asin。</p>
+        <h2>POST /api/amazon/opportunities</h2>
+        <p>请求体为 explore 响应中的 request、series、regions，返回精确/词元/相似匹配、Google 变化率和 0–100 机会分数。</p>
+        <h2>POST /api/analyze-ai</h2>
+        <p>返回本地规则分析；配置 TRENDSCOPE_AI_BASE_URL、TRENDSCOPE_AI_API_KEY、TRENDSCOPE_AI_MODEL 后补充 OpenAI 兼容模型的结论、证据和风险。</p>
+        <h2>POST /api/schedules</h2>
+        <p>保存每 3 天或每 7 天的趋势更新计划。计划和真实快照保存在 data/trendscope.db；设置 TRENDSCOPE_SCHEDULER=1 才会开启本地后台执行。</p>
+      </section>
+      <section class="detail-panel" style="margin-top: 20px">
         <h2>GET /api/health</h2>
         <p>返回服务版本、数据提供库和支持地区。服务正常不代表 Google 当前可访问。</p>
         <h2>错误结构</h2>

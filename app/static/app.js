@@ -181,6 +181,7 @@ function setView(view) {
   const titles = {
     explore: ['趋势探索', '探索搜索趋势', '比较关键词的关注度，发现正在发生的变化。'],
     trending: ['实时热搜', '此刻，大家在搜什么', '追踪地区热门搜索，把新话题变成下一个研究方向。'],
+    opportunity: ['机会分析', '验证需求与机会', '用长期趋势、地区差异和 Amazon 关键词联动判断机会。'],
     saved: ['我的收藏', '让研究继续发生', '把值得关注的关键词，留在你的研究工作区。'],
   };
   $('crumb').textContent = titles[view][0];
@@ -195,6 +196,7 @@ function setView(view) {
     else b.removeAttribute('aria-current');
   });
   if (view === 'trending') loadTrending();
+  if (view === 'opportunity') renderOpportunity();
   if (view === 'saved') renderSaved();
 }
 async function api(url, options = {}) {
@@ -712,6 +714,71 @@ function renderSaved() {
     })
   );
 }
+function currentAnalysisPayload() {
+  if (!state.result) return null;
+  return { request: state.result.request, series: state.result.series, regions: state.result.regions };
+}
+async function renderOpportunity() {
+  const payload = currentAnalysisPayload();
+  if (!payload) {
+    $('demand-cards').replaceChildren();
+    $('opportunity-list').replaceChildren(el('div', 'inline-empty', '先完成一次趋势探索，再查看需求真实性。'));
+    return;
+  }
+  try {
+    const analysis = await api('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    $('demand-cards').replaceChildren(...analysis.trends.map((item, i) => {
+      const card = color(el('article', 'summary-card'), i);
+      card.append(el('div', 'summary-label', item.keyword), el('div', 'summary-value', item.classification));
+      card.append(el('div', 'summary-foot', `近期变化 ${item.change_pct === null ? '—' : `${item.change_pct}%`} · 置信度 ${Math.round(item.confidence * 100)}%`));
+      return card;
+    }));
+    await loadOpportunities(payload);
+  } catch (error) { notice(error.message); }
+}
+async function loadOpportunities(payload = currentAnalysisPayload()) {
+  if (!payload) return;
+  try {
+    const result = await api('/api/amazon/opportunities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    $('opportunity-list').replaceChildren(...(result.rows.length ? result.rows.slice(0, 20).map((row) => {
+      const item = el('div', 'opportunity-row'), text = el('div');
+      text.append(el('strong', '', row.keyword), el('small', '', `${row.match_type} 匹配 · Google ${row.google_change_pct ?? '—'}% · Amazon 排名 ${row.rank ?? '—'}`));
+      item.append(text, el('span', 'score-pill', `${row.opportunity_score} 分`));
+      return item;
+    }) : [el('div', 'inline-empty', result.imported_count ? '暂无达到匹配阈值的机会词。' : '请先导入 Amazon 关键词 CSV。')]));
+  } catch (error) { $('opportunity-list').replaceChildren(el('div', 'inline-empty', error.message)); }
+}
+async function importAmazon() {
+  const file = $('amazon-file').files[0];
+  if (!file) { toast('请先选择 CSV 文件。'); return; }
+  try {
+    const result = await api('/api/amazon/import', { method: 'POST', headers: { 'Content-Type': 'text/csv; charset=utf-8' }, body: await file.arrayBuffer() });
+    $('amazon-import-status').textContent = `已导入 ${result.imported} 个关键词${result.warnings.length ? `，${result.warnings.length} 条警告` : ''}`;
+    toast('Amazon 关键词已导入。');
+    loadOpportunities();
+  } catch (error) { $('amazon-import-status').textContent = error.message; }
+}
+async function createSchedule() {
+  const payload = currentAnalysisPayload();
+  if (!payload) { toast('请先完成一次趋势探索。'); return; }
+  try {
+    const { mode, ...scheduleRequest } = payload.request;
+    const result = await api('/api/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...scheduleRequest, interval_days: Number($('schedule-interval').value) }) });
+    $('schedule-status').textContent = `已创建，下次更新 ${fetched(result.next_run)}`;
+    toast('更新计划已保存。');
+  } catch (error) { $('schedule-status').textContent = error.message; }
+}
+async function runAiAnalysis() {
+  const payload = currentAnalysisPayload();
+  if (!payload) { toast('请先完成一次趋势探索。'); return; }
+  const button = $('ai-analyze'); button.disabled = true;
+  try {
+    const result = await api('/api/analyze-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const box = $('ai-result'); box.replaceChildren(el('strong', '', result.ai?.conclusion || result.summary));
+    (result.ai?.evidence || result.trends.flatMap((item) => item.evidence)).slice(0, 4).forEach((line) => box.append(el('p', '', `• ${line}`)));
+    if (result.ai_error) box.append(el('small', '', result.ai_error));
+  } catch (error) { $('ai-result').textContent = error.message; } finally { button.disabled = false; }
+}
 function downloadCsv() {
   if (!state.result) return;
   const blob = new Blob([resultCsv(state.result)], { type: 'text/csv;charset=utf-8' }),
@@ -780,6 +847,9 @@ $('refresh-trending').addEventListener('click', loadTrending);
 $('trending-geo').addEventListener('change', loadTrending);
 $('save-query').addEventListener('click', saveQuery);
 $('export-csv').addEventListener('click', downloadCsv);
+$('amazon-import').addEventListener('click', importAmazon);
+$('schedule-create').addEventListener('click', createSchedule);
+$('ai-analyze').addEventListener('click', runAiAnalysis);
 window.addEventListener('storage', (e) => {
   if (e.key === STORAGE) {
     readSaved();
